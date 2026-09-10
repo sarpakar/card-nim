@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Card Nim</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geomini:wght@200..800&display=swap">
+  <link rel="stylesheet" href="/lobby.css">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+</head>
+<body>
+  <!-- inline icon sprite: stroke icons -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-cards" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="12" height="16" rx="2"/><path d="M9 3h10a2 2 0 0 1 2 2v12"/></symbol>
+    <symbol id="i-stones" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"/><circle cx="16" cy="15" r="4"/><circle cx="12" cy="8" r="4"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-person" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l11-6.5a1 1 0 0 0 0-1.72l-11-6.5A1 1 0 0 0 8 5.5z"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1 1"/><path d="M14 10a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1"/></symbol>
+    <symbol id="i-trophy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M7 6H4v2a3 3 0 0 0 3 3M17 6h3v2a3 3 0 0 1-3 3"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2V5z"/><path d="M4 19a2 2 0 0 0 2 2h13"/></symbol>
+    <symbol id="i-table" viewBox="0 0 64 40"><path d="M20 3H44A17 17 0 0 1 44 37H20A17 17 0 0 1 20 3Z" fill="none" stroke="currentColor" stroke-width="3" stroke-dasharray="13 4" stroke-linecap="butt"/><path fill="currentColor" fill-rule="evenodd" d="M19 8H45A12 12 0 0 1 45 32H19A12 12 0 0 1 19 8Z M16 16L25 12V29L19 31Z M18 17L23.5 14.5V27.5L20 28.8Z M48 16L39 12V29L45 31Z M46 17L40.5 14.5V27.5L44 28.8Z M26 10H38V30H26Z M28 12H36V28H28Z M32 15.5L34.6 20L32 24.5L29.4 20Z"/></symbol>
+    <symbol id="i-code" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m8 8-4 4 4 4M16 8l4 4-4 4M13 5l-2 14"/></symbol>
+    <symbol id="i-bot" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="11" rx="3"/><path d="M12 8V4M8 4h8M9 13h.01M15 13h.01M9 16h6"/></symbol>
+    <symbol id="i-github" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></symbol>
+    <symbol id="i-spade" viewBox="0 0 256 256" fill="currentColor"><path d="M232,136a56,56,0,0,1-83.4,48.82l11.06,36.88A8,8,0,0,1,152,232H104a8,8,0,0,1-7.66-10.3l11.06-36.88A56,56,0,0,1,24,136c0-32,17.65-62.84,51-89.27a234.14,234.14,0,0,1,49.89-30.11,7.93,7.93,0,0,1,6.16,0A234.14,234.14,0,0,1,181,46.73C214.35,73.16,232,104,232,136Z"/></symbol>
+  </svg>
+
+  <div class="window">
+    <!-- left: list of tables -->
+    <section class="pane pane-list" aria-label="Tables">
+      <div class="toolbar">
+        <div class="title"><svg class="icon"><use href="#i-spade"/></svg>Card Nim</div>
+      </div>
+      <label class="search"><svg class="icon"><use href="#i-search"/></svg><input type="search" id="search" placeholder="Search" autocomplete="off"></label>
+      <div class="segment" id="segment" role="tablist" aria-label="Filter">
+        <button type="button" class="active" data-filter="all" role="tab" aria-selected="true">All</button>
+        <button type="button" data-filter="waiting" role="tab" aria-selected="false">Open</button>
+        <button type="button" data-filter="playing" role="tab" aria-selected="false">Playing</button>
+        <button type="button" data-filter="finished" role="tab" aria-selected="false">Done</button>
+      </div>
+      <div class="list" id="games-body"><div class="list-empty">Loading…</div></div>
+      <div class="strategies">
+        <div class="group-title">Strategies</div>
+        <div id="strategies"><div class="list-empty">Loading…</div></div>
+      </div>
+      <div class="footer">
+        <div class="item"><svg class="icon table"><use href="#i-table"/></svg><span id="games-count">0 tables</span></div>
+        <div class="item"><svg class="icon"><use href="#i-link"/></svg><span id="server-info"></span></div>
+      </div>
+    </section>
+
+    <!-- middle: the selected table -->
+    <section class="pane pane-detail" aria-label="Selected table">
+      <div class="toolbar">
+        <div class="title" id="detail-title">Tables</div>
+      </div>
+      <div class="detail" id="detail">
+        <div class="detail-empty">
+          <div class="blob lg" style="--a:#bfc3cc;--b:#8e929c"><svg class="table"><use href="#i-table"/></svg></div>
+          <div>Select a table on the left, or create one on the right.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- right: new table -->
+    <section class="pane pane-form" aria-label="New table">
+      <div class="toolbar">
+        <div class="title"><svg class="icon"><use href="#i-plus"/></svg>New table</div>
+      </div>
+      <div class="form-body">
+        <form class="create" id="create-form" autocomplete="off">
+          <div class="group-title">Settings</div>
+          <div class="settings">
+            <label class="setting"><span class="k">Stones</span><input name="stones" type="number" min="1" max="500" value="100" required></label>
+            <label class="setting"><span class="k">Cards <em>1..k</em></span><input name="cards" type="number" min="1" max="200" value="25" required></label>
+            <label class="setting"><span class="k">Seconds per player</span><input name="time_limit" type="number" min="1" max="86400" value="120" required></label>
+            <label class="setting wide"><span class="k">Label</span><input name="label" type="text" maxlength="60" placeholder="Optional, e.g. Round 1"></label>
+          </div>
+          <p class="hint" id="sum-hint"></p>
+          <button class="btn blue full" type="submit"><svg class="icon"><use href="#i-plus"/></svg>Create table</button>
+          <span class="error" id="create-error" role="alert"></span>
+        </form>
+
+        <div class="group-title">Join from a phone or laptop</div>
+        <div class="qr-card">
+          <div class="qr" id="qr" aria-hidden="true"></div>
+          <div class="qr-text">
+            <div class="qr-url" id="qr-url"></div>
+            <div class="secondary">Scan, or type the address, on any device on this Wi-Fi. Open a table and sit down.</div>
+          </div>
+        </div>
+        <a class="qr-link" href="https://github.com/sarpakar/card-nim" target="_blank" rel="noopener">
+          <svg class="icon"><use href="#i-github"/></svg>
+          <span class="qr-link-text"><span class="qr-link-title">Source on GitHub</span><span class="secondary">github.com/sarpakar/card-nim</span></span>
+          <svg class="icon chevron"><use href="#i-chevron"/></svg>
+        </a>
+
+        <div class="group-title">House rules</div>
+        <div class="rules-card">
+          <div class="rule"><svg class="icon"><use href="#i-cards"/></svg><span>Each player holds the cards 1 through <em>k</em>, one of each. Play a card to remove that many stones; the card is gone for good.</span></div>
+          <div class="rule"><svg class="icon"><use href="#i-trophy"/></svg><span>Match the pile exactly and you win. Play a card bigger than the pile and you lose. If none of your cards fit, you lose.</span></div>
+          <div class="rule"><svg class="icon"><use href="#i-clock"/></svg><span>Each player's clock runs only on their own turn.</span></div>
+          <div class="rule"><svg class="icon"><use href="#i-person"/></svg><span>Humans play in the browser. Bots use the HTTP API in the README. Anyone can watch a table live.</span></div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script src="/qr.js"></script>
+  <script src="/lobby.js"></script>
+</body>
+</html>
