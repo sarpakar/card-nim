@@ -6,6 +6,7 @@ clients/cpp/client
 clients/c/client
 clients/go/player
 clients/rust/player
+clients/minimax/client
 clients/java/*.class
 out/
 .DS_Store

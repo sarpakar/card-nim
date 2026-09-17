@@ -1,0 +1,14 @@
+{
+  "language": "C",
+  "label": "Minimax (exact search + pairing theory)",
+  "file": "client.c",
+  "edit": "choose_card(stones, mine, n_mine, theirs, n_theirs)",
+  "note": "solves the position outright when it can; otherwise never hands over an exact match and plays the largest safe card",
+  "badge": "MM",
+  "color": "#7c3aed",
+  "tools": {"cc": ["cc", "gcc", "clang"]},
+  "build": ["{cc}", "-O2", "-o", "{out}", "{file}"],
+  "output": "client",
+  "run": ["{out}"],
+  "command": "cc -O2 {file} -o client && ./client --game ID --name NAME"
+}
