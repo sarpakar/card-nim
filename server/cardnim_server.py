@@ -544,6 +544,7 @@ ROUTES = [
     ("POST", r"^/api/tournaments/(?P<id>[A-Za-z0-9]+)/play$",          "play_match"),
     ("POST", r"^/api/tournaments/(?P<id>[A-Za-z0-9]+)/walkover$",      "walkover"),
     ("POST", r"^/api/tournaments/(?P<id>[A-Za-z0-9]+)/abort$",         "abort_tournament"),
+    ("POST", r"^/api/tournaments/(?P<id>[A-Za-z0-9]+)/restart$",       "restart_tournament"),
     ("POST", r"^/api/uploads$",                       "upload"),
     ("GET",  r"^/api/uploads$",                       "upload_info"),
     ("GET",  r"^/api/health$",                        "health"),
@@ -1289,6 +1290,41 @@ class Handler(BaseHTTPRequestHandler):
             v = view()
             v["tournament"] = t.summary()
             self._send_json(v)
+
+    def api_restart_tournament(self, id: str) -> None:
+        """POST /api/tournaments/{id}/restart -> the new bracket (201)
+        Draws a fresh tournament with the same settings and the same
+        server-run entrants, and records it on the old one as `successor`.
+        That field is what lets every other screen follow: a phone watching
+        the old bracket sees it on its next poll and goes to the new one,
+        instead of being left on a finished draw.  People who entered from a
+        browser re-enter, since their seat token belongs to the old bracket.
+        The organiser's machine only, like every other control."""
+        self.require_organiser("restart a tournament")
+        old = self._tournament(id)
+        store = self.server.store
+        if old.successor and store.get_tournament(old.successor):
+            return self._send_tournament(store.get_tournament(old.successor), 200)
+        label = re.sub(r"(\s*\(again\))+$", "", old.label or "") or f"Tournament {old.id}"
+        fresh = store.create_tournament(old.stones, old.cards, old.time_limit,
+                                        f"{label} (again)", old.bot_delay)
+        carried = []
+        with store.lock:
+            for e in sorted(old.entrants.values(), key=lambda e: e.id):
+                if e.kind == KIND_HUMAN:
+                    continue                     # their token opens a seat in the old draw
+                try:
+                    fresh.add_entrant(e.name, e.avatar, e.kind)
+                    carried.append(e.name)
+                except GameError:
+                    pass                         # a duplicate name just does not carry
+            old.successor = fresh.id
+            old._touch()
+            store.tournament_changed(old)        # wake every screen on the old bracket
+            store.tournament_changed(fresh)
+        self.log_message("tournament %s restarted as %s (%d entrants carried)",
+                         old.id, fresh.id, len(carried))
+        self._send_tournament(fresh, 201)
 
     def api_play_match(self, id: str) -> None:
         """POST /api/tournaments/{id}/play {round, match} -> bracket

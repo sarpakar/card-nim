@@ -37,6 +37,13 @@
         <a class="iconbtn" href="/" title="Back to the lobby" aria-label="Back to the lobby"><svg class="icon"><use href="#i-home"/></svg></a>
       </div>
       <div class="scroll">
+        <div class="join-card" id="series" hidden>
+          <div class="group-title">Series <span class="secondary" id="series-count"></span></div>
+          <div class="list" id="series-board" style="max-height:none;min-height:0"></div>
+          <button class="btn full" type="button" id="restart-btn" hidden><svg class="icon"><use href="#i-trophy"/></svg>Restart tournament</button>
+          <p class="hint" id="restart-hint" style="margin:0;font-size:12px;color:var(--secondary)" hidden></p>
+          <span class="error" id="restart-error" role="alert"></span>
+        </div>
         <div class="you-card" id="you" hidden></div>
         <div class="group-title">Entrants <span class="secondary" id="entrants-count"></span></div>
         <div class="list" id="entrants" style="max-height:none;min-height:0"><div class="list-empty">Loading…</div></div>

@@ -111,7 +111,12 @@
       if (!res.ok) throw new Error("server answered " + res.status);
       accept(await res.json());
       pollFailures = 0;
-      if (t.status !== "finished") poll();      // a finished bracket never changes again
+      // A finished bracket used to be the end of the line, and the poll
+      // stopped here.  It is not the end any more: the organiser can restart,
+      // which stamps a successor on it, and every screen in the room has to
+      // follow.  So the long poll stays open -- it costs nothing until the
+      // server wakes it -- and only stops once we are on our way out.
+      if (!following) poll();
     } catch (err) {
       pollFailures += 1;
       if (pollFailures >= 2) $("title").textContent = "Lost contact with the server. Retrying…";
@@ -555,6 +560,112 @@
       <span class="error" id="you-error"></span>`;
   }
 
+  /* ------------------------------------------------------------ the series
+
+     Restarting draws a brand new tournament, so the running score cannot live
+     on the tournament itself.  It is keyed on the line-up instead -- the same
+     entrants at the same settings are the same series -- and kept in this
+     browser, which is the organiser's machine, the only one that can restart.
+     Each tournament id is recorded once, so a reload never double-counts. */
+
+  function seriesKey() {
+    if (!t || !(t.entrants || []).length) return null;
+    const who = t.entrants.map((e) => `${e.name}:${e.kind}`).sort().join("|");
+    return `cardnim_series|${t.stones}|${t.cards}|${t.time_limit}|${who}`;
+  }
+
+  function seriesRead() {
+    const k = seriesKey();
+    const blank = { wins: {}, played: 0, seen: {} };
+    if (!k) return blank;
+    try { return Object.assign(blank, JSON.parse(localStorage.getItem(k)) || {}); }
+    catch (e) { return blank; }
+  }
+
+  function seriesWrite(v) {
+    const k = seriesKey();
+    if (!k) return;
+    try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* private window */ }
+  }
+
+  function recordChampion() {
+    if (!t || t.status !== "finished" || !t.champion) return;
+    const name = t.champion_name || (entrant(t.champion) || {}).name;
+    if (!name) return;
+    const s = seriesRead();
+    if (s.seen[t.id]) return;                      // already counted this one
+    s.seen[t.id] = true;
+    s.wins[name] = (s.wins[name] || 0) + 1;
+    s.played += 1;
+    seriesWrite(s);
+  }
+
+  function seriesHtml() {
+    const s = seriesRead();
+    const rows = Object.keys(s.wins).map((n) => [n, s.wins[n]])
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+    if (!rows.length) return '<div class="list-empty">No tournament finished yet.</div>';
+    const top = rows[0][1];
+    return rows.map(([name, n]) => {
+      const e = (t.entrants || []).find((x) => x.name === name);
+      return `<div class="entrant">
+        ${e ? `<img src="${avatarSrc(e.avatar)}" alt="">` : ""}
+        <span class="text"><span class="title">${esc(name)}${n === top ? ' <span class="badge gold">leader</span>' : ""}</span>
+        <span class="sub">${plural(n, "tournament")} won</span></span>
+      </div>`;
+    }).join("");
+  }
+
+  function renderSeries() {
+    const panel = $("series");
+    if (!panel) return;
+    const s = seriesRead();
+    const rows = Object.keys(s.wins).length;
+    panel.hidden = !canControl && !rows;           // a visitor sees the score, not the button
+    const count = $("series-count");
+    if (count) count.textContent = s.played ? plural(s.played, "round") : "";
+    paint($("series-board"), seriesHtml());
+    const btn = $("restart-btn");
+    if (btn) btn.hidden = !canControl;
+    const hint = $("restart-hint");
+    if (hint) {
+      const humans = (t.entrants || []).filter((e) => !e.bot && e.kind !== "api").length;
+      hint.hidden = !canControl || !humans;
+      hint.textContent = humans
+        ? `${plural(humans, "player")} at a browser will have to enter the new bracket again.`
+        : "";
+    }
+  }
+
+  /* One call: the server draws the new bracket, carries the server-run
+     entrants over and stamps `successor` on this one.  This browser does not
+     navigate itself -- it follows the same successor every other screen does,
+     so the organiser and the room land on the new draw the same way. */
+  async function restartTournament() {
+    const err = $("restart-error");
+    if (err) err.textContent = "";
+    const btn = $("restart-btn");
+    if (btn) { btn.disabled = true; btn.textContent = "Drawing…"; }
+    try {
+      recordChampion();                            // bank this one before leaving
+      const fresh = await api("POST", `/api/tournaments/${tid}/restart`);
+      followSuccessor(fresh.id);
+    } catch (e) {
+      if (err) err.textContent = e.message;
+      if (btn) { btn.disabled = false; btn.textContent = "Restart tournament"; }
+    }
+  }
+
+  /* Every screen watching this bracket goes to its replacement, whoever
+     pressed the button.  Guarded so the poll cannot fire it twice. */
+  let following = false;
+  function followSuccessor(next) {
+    if (!next || following) return;
+    following = true;
+    recordChampion();                              // bank the result before we go
+    window.location.href = "/tournament/" + next;
+  }
+
   function entrantsHtml() {
     if (!t.entrants.length) return '<div class="list-empty">Nobody yet. Enter below.</div>';
     return t.entrants.map((e) => {
@@ -810,30 +921,52 @@
   let celebratingMatch = null; // key of the match whose result is on screen
   let celebratedMatches = {};  // keys already celebrated, so a poll cannot repeat one
   let celebrationTimer = null;
+  let celebrationPin = null;   // the celebration's own pin, separate from the user's
+  let seenWinners = null;      // null until the first paint has been seeded
 
   const matchKey = (m) => (m ? `${m.round}-${m.index}` : null);
 
-  /* A match that has just been decided gets its moment.  Only once: the
-     bracket is polled every couple of seconds and the result would otherwise
-     fire again on every one of them. */
+  /* Every decided match gets its moment, not only the one that happens to be
+     on screen.  The pane jumps to the next ready match the instant a result
+     lands, so celebrating shownMatch() meant every result but the final was
+     skipped -- the next match was already showing and its winner was null. */
+  function decidedMatches() {
+    const out = [];
+    for (const r of t.rounds || []) {
+      for (const m of r.matches) if (m.winner !== null && matchKey(m)) out.push(m);
+    }
+    return out;
+  }
+
   function celebrateMatch() {
-    const m = shownMatch();
-    const key = matchKey(m);
-    if (!m || m.winner === null || !key) return;
+    const decided = decidedMatches();
+    if (seenWinners === null) {
+      // First paint of a bracket already in progress: what is decided is
+      // history, not news, so it is marked without any fireworks.
+      seenWinners = {};
+      for (const m of decided) celebratedMatches[matchKey(m)] = true;
+      return;
+    }
     if (t.status === "finished") return;          // the champion card takes over
-    if (celebratedMatches[key]) return;
-    celebratedMatches[key] = true;
-    celebratingMatch = key;
-    const canvas = $("fireworks");
-    if (canvas && window.cardnimFireworks) window.cardnimFireworks(canvas, MATCH_CELEBRATION);
-    clearTimeout(celebrationTimer);
-    celebrationTimer = setTimeout(() => {
-      celebratingMatch = null;
+    for (const m of decided) {
+      const key = matchKey(m);
+      if (celebratedMatches[key]) continue;
+      celebratedMatches[key] = true;
+      celebratingMatch = key;
+      celebrationPin = key;                       // hold the view on this winner
+      const canvas = $("fireworks");
+      if (canvas && window.cardnimFireworks) window.cardnimFireworks(canvas, MATCH_CELEBRATION);
+      clearTimeout(celebrationTimer);
+      celebrationTimer = setTimeout(() => {
+        celebratingMatch = null;
+        if (celebrationPin === key) celebrationPin = null;
+        lastSignature = null;
+        render();
+      }, MATCH_CELEBRATION);
       lastSignature = null;
       render();
-    }, MATCH_CELEBRATION);
-    lastSignature = null;
-    render();
+      return;                                     // one at a time; the rest queue
+    }
   }
 
   function celebrateChampion() {
@@ -868,6 +1001,11 @@
     return null;
   }
   function shownMatch() {
+    if (celebrationPin) {
+      for (const r of t.rounds || []) {
+        for (const m of r.matches) if (`${m.round}-${m.index}` === celebrationPin) return m;
+      }
+    }
     if (pinned) {
       for (const r of t.rounds || []) {
         for (const m of r.matches) if (`${m.round}-${m.index}` === pinned) return m;
@@ -887,7 +1025,7 @@
      holds for MATCH_CELEBRATION ms and then the table goes back to showing
      the final position, so the room gets a moment on each result before the
      next match is started. */
-  const MATCH_CELEBRATION = 3000;
+  const MATCH_CELEBRATION = 4200;   // the same moment the champion gets
 
   function matchCardHtml(m) {
     if (!m || m.winner === null || celebratingMatch !== matchKey(m)) return "";
@@ -1122,6 +1260,9 @@
     paint($("table-actions"), tableActionsHtml());
     paint($("livetable"), tablePaneHtml());
     wire();
+    if (t && t.successor) { followSuccessor(t.successor); return; }
+    recordChampion();
+    renderSeries();
     celebrateChampion();
     celebrateMatch();
   }
@@ -1142,6 +1283,7 @@
       if (box) box.querySelectorAll(selector).forEach((b) => bind(b, () => fn(b)));
     };
     on("start", () => { $("start").disabled = true; start().catch((e) => { $("start").disabled = false; $("title").textContent = e.message; }); });
+    on("restart-btn", () => { restartTournament(); });
     on("abort-btn", () => { confirmAbort = true; render(); });
     on("abort-no", () => { confirmAbort = false; render(); });
     on("abort-yes", () => { $("abort-yes").disabled = true; abort().then(() => { confirmAbort = false; }).catch((e) => { $("title").textContent = e.message; }); });
@@ -1195,6 +1337,6 @@
     poll();
   }
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible" && t && t.status !== "finished") refreshNow();
+    if (document.visibilityState === "visible" && t && !following) refreshNow();
   });
 })();

@@ -127,6 +127,7 @@ class Tournament:
         self.rounds: list[list[Match]] = []
         self.size = 0
         self.champion: Optional[int] = None
+        self.successor: Optional[str] = None   # id of the bracket that replaced this one
         self.aborted = False
         self.reason = ""
         self.version = 0
@@ -453,6 +454,7 @@ class Tournament:
         """Purpose: the short form for the lobby list."""
         return {
             "id": self.id, "label": self.label, "status": self.status, "aborted": self.aborted,
+            "successor": self.successor,
             "stones": self.stones, "cards": self.cards, "time_limit": self.time_limit,
             "entrants": len(self.entrants), "rounds": len(self.rounds),
             "champion": self.entrants[self.champion].name if self.champion else None,
